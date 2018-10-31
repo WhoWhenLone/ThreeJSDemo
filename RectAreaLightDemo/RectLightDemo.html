@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>平面光源案例</title>
+    <script type="text/javascript" src="util/three.js"></script>
+    <script type="text/javascript" src="util/RectAreaLightUniformsLib.js"></script>
+    <script type="text/javascript" src="util/dat.gui.min.js"></script>
+    <script type="text/javascript" src="util/OrbitControls.js"></script>
+    <style>
+        body{
+            margin: 0;overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<div id="WebGL-output"></div>
+<script type="text/javascript">
+    var scene;//创景
+    var renderer;//渲染窗口
+    var camera;//摄像机
+    var box;//方块
+    var sphere;//球体
+    var plane;//平面
+    var params = {};
+/** 在使用rectareaLight光时  物体材质为MeshStanderMaterial  MeshPhysicalMaterial才有效果
+ * 这一点需要注意
+ * */
+    function init() {
+        scene = new THREE.Scene();
+        renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setClearColor(new THREE.Color(0x000000));
+        renderer.shadowMap.enabled = true;
+        renderer.setSize(window.innerWidth,window.innerHeight);
+        camera = new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,1000);
+        camera.position.set(50,50,50);
+        camera.lookAt(scene.position);
+
+        let planeGeometry = new THREE.PlaneGeometry(100,100);
+        let planeMaterial = new THREE.MeshStandardMaterial({color:0xaaaaaa});
+        plane = new THREE.Mesh(planeGeometry,planeMaterial);
+        plane.receiveShadow = true;
+        plane.rotation.x = -0.5*Math.PI;
+        plane.position.set(0,0,0);
+        scene.add(plane);
+        let boxGeometry = new THREE.BoxGeometry(10,10,10);
+        let boxMaterial = new THREE.MeshStandardMaterial({color:0xff0000});
+        /**MeshStandardMaterial 标准网格材质 对于roughness 平滑度  metalness 金属光泽 有更好的效果
+         * 但是计算量也是很大的*/
+        boxMaterial.roughness = 0.05;
+        boxMaterial.metalness = 0.45;
+        box = new THREE.Mesh(boxGeometry,boxMaterial);
+        box.castShadow =true;
+        box.position.set(5,5,5);
+        scene.add(box);
+
+        let sphereGeometry = new THREE.SphereGeometry(8,20,20);
+        let sphereMaterial = new THREE.MeshStandardMaterial({color:0x00ffff});
+        sphereMaterial.roughness = 0.05;
+        sphereMaterial.metalness = 0.4;
+        sphere = new THREE.Mesh(sphereGeometry,sphereMaterial);
+        sphere.castShadow = true;
+        sphere.position.set(0,5,-15);
+        scene.add(sphere);
+
+        let ambientLight = new THREE.AmbientLight(0xffffff,0.5);
+        scene.add(ambientLight);
+
+        let spotLight = new THREE.SpotLight(0xffffff,0.1);
+        spotLight.castShadow = true;
+        spotLight.target = plane;
+        spotLight.position.set(20,40,30);
+        scene.add(spotLight);
+
+        /** 可以利用rectarealight实现物体发光效果 比如台灯 路灯效果*/
+        //rectareaLight 没有影子效果 如果需要实现影子效果应添加其他光源
+        let rectLight = new THREE.RectAreaLight(0xffffff,1500,5,5);
+        rectLight.position.set(0,20,30);
+        rectLight.rotation.x=0.5*Math.PI;
+        //rectLight.rotation.y=0.25*Math.PI;
+        //rectLight.rotation.z = 0.5*Math.PI;
+        scene.add(rectLight);
+        let rectLightHelper = new THREE.RectAreaLightHelper(rectLight,0xff0000);
+        scene.add(rectLightHelper);
+        document.body.appendChild(renderer.domElement);
+
+        function addGUI()
+        {
+            var gui = new dat.GUI({width:250});//创建gui 并设置其宽度
+            gui.open();//将gui展开
+            params={
+                '光源宽度':rectLight.width,
+                '光源高度':rectLight.height,
+                '光源颜色':rectLight.color.getHex(),
+            };
+            var rectlightFolder = gui.addFolder('光源大小设置');
+            rectlightFolder.add(params,'光源宽度',1,100,).onChange(function (val) {
+                rectLight.width = val;
+            });
+            rectlightFolder.add(params,'光源高度',10,100).onChange(function (val) {
+                rectLight.height = val;
+            });
+
+            let rectColorFolder = gui.addFolder('光源颜色设置');
+            rectColorFolder.addColor(params,'光源颜色').onChange(function (val) {
+                rectLight.color.setHex(val);
+            });
+
+        }
+        addGUI();
+        renderScene();
+        function renderScene() {
+            box.rotation.y+=0.01;
+            sphere.rotation.y+=0.01;
+            requestAnimationFrame(renderScene);
+            renderer.render(scene,camera);
+        }
+
+    }
+    window.onload = init;
+</script>
+</body>
+</html>
